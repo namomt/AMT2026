@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>皈依法名查詢</title>
+
+    <style>
+      /* 引入字型 */
+      @font-face {
+        font-family: "GenRyuMin2";
+        src:
+          url("https://raw.githubusercontent.com/mt3722/TableMaker/main/GenRyuMin2TW-B.woff2")
+            format("woff2"),
+          url("https://raw.githubusercontent.com/mt3722/TableMaker/main/GenRyuMin2TW-B.woff")
+            format("woff");
+      }
+      @font-face {
+        font-family: "BpmfGenRyuMin";
+        src:
+          url("https://raw.githubusercontent.com/mt3722/TableMaker/main/BpmfGenRyuMin-B.woff2")
+            format("woff2"),
+          url("https://raw.githubusercontent.com/mt3722/TableMaker/main/BpmfGenRyuMin-B.woff")
+            format("woff");
+      }
+
+      :root {
+        --bg-color: #f5f2eb; /* 宣紙底色 */
+        --card-bg: #ffffff; /* 卡片白 */
+        --text-name: #555; /* 姓名：純黑 */
+        --text-dharma: #bf8c1e; /* 法名：金色 */
+        --border-color: #ebebeb; /* 極淡邊框 */
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "GenRyuMin2", serif;
+        background-color: var(--bg-color);
+        padding-bottom: 40px;
+      }
+
+      /* 搜尋列 */
+      .search-header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background-color: var(--bg-color);
+        padding: 15px 20px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+      }
+
+      .search-box {
+        position: relative;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .search-box input {
+        width: 100%;
+        padding: 12px 20px;
+        padding-left: 45px;
+        border-radius: 50px;
+        border: 1px solid #dcdcdc;
+        font-size: 16px;
+        font-family: "GenRyuMin2", serif;
+        background: var(--card-bg);
+        outline: none;
+        transition: all 0.3s;
+        text-align: center; /* 輸入時文字居中 */
+      }
+
+      .search-box input:focus {
+        border-color: var(--text-dharma);
+        box-shadow: 0 0 8px rgba(185, 64, 71, 0.2);
+      }
+
+      .search-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+        font-size: 18px;
+      }
+
+      /* 列表容器 */
+      .container {
+        max-width: 900px;
+        margin: 20px auto;
+        padding: 0 15px;
+        display: grid;
+        /* 自動適應寬度，卡片最小寬度設為 140px */
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 20px;
+      }
+
+      /* 卡片樣式 */
+      .card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 25px 10px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+        border: 1px solid var(--border-color);
+        transition: transform 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .card:active {
+        transform: scale(0.98);
+      }
+
+      /* 法名區塊 */
+      .dharma-name-box {
+        font-size: 2.2rem;
+        color: var(--text-dharma);
+        line-height: 1.1;
+        margin-bottom: 12px;
+        font-weight: bold;
+      }
+
+      /* 法名首字 (一般字型) */
+      .d-first {
+        font-family: "GenRyuMin2", serif;
+      }
+      /* 法名尾字 (注音字型) */
+      .d-last {
+        font-family: "BpmfGenRyuMin", serif;
+        margin-left: 2px;
+      }
+
+      /* 姓名 (黑色) */
+      .real-name {
+        font-size: 1.1rem;
+        color: var(--text-name);
+        letter-spacing: 1px;
+      }
+
+      /* 無結果提示 */
+      .no-result {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 40px;
+        color: #999;
+        font-size: 1.2rem;
+        display: none;
+      }
+
+      /* 底部間距 (原本放置計數器的地方，現在留白即可) */
+      .footer-spacer {
+        height: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="search-header">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="搜尋姓名或法名..." />
+      </div>
+    </div>
+
+    <div class="container" id="cardContainer">
+      <div class="no-result" id="noResult">查無資料</div>
+    </div>
+
+    <div class="footer-spacer"></div>
+
+    <script>
+      // 1. 資料庫
+      const rawData = [
+        { name: "陳秀花", dharma: "佛簾" },
+        { name: "徐美妙", dharma: "佛篷" },
+        { name: "張燕琪", dharma: "佛笠" },
+        { name: "陳美", dharma: "佛恆" },
+        { name: "申榮基", dharma: "宗範" },
+        { name: "張秀麗", dharma: "佛簽" },
+        { name: "林永祥", dharma: "宗簡" },
+        { name: "陳艾伶", dharma: "佛箖" },
+        { name: "吳大振", dharma: "宗篙" },
+        { name: "丁吳月", dharma: "佛箱" },
+        { name: "林基雄", dharma: "宗竿" },
+        { name: "王俊傑", dharma: "宗筏" },
+        { name: "張宋阡", dharma: "佛簣" },
+        { name: "蕭素花", dharma: "佛箴" },
+        { name: "李碧雲", dharma: "佛筵" },
+        { name: "姚碧雲", dharma: "佛簞" },
+        { name: "張金源", dharma: "宗節" },
+        { name: "林羽甄", dharma: "佛管" },
+        { name: "蔣美華", dharma: "佛答" },
+        { name: "劉碧惠", dharma: "佛籃" },
+        { name: "江⾧川", dharma: "宗笙" },
+        { name: "陳品姜", dharma: "佛等" },
+        { name: "楊麗玉", dharma: "佛笑" },
+        { name: "盧秀絨", dharma: "佛筐" },
+        { name: "張菜勤", dharma: "佛第" },
+        { name: "林鈺閔", dharma: "宗簌" },
+        { name: "梁素枝", dharma: "佛竺" },
+        { name: "廖宏誠", dharma: "宗籙" },
+        { name: "張惠鳳", dharma: "佛筥" },
+        { name: "陳俞潔", dharma: "佛筱" },
+        { name: "廖佳慶", dharma: "宗筌" },
+        { name: "張珍樺", dharma: "佛籟" },
+        { name: "程張緞", dharma: "佛筠" },
+        { name: "程合平", dharma: "宗筆" },
+        { name: "程惠妙", dharma: "佛竹" },
+        { name: "黃資惠", dharma: "佛篆" },
+        { name: "戴曉蓉", dharma: "佛笈" },
+        { name: "戴曉伸", dharma: "宗筷" },
+        { name: "林鋒淵", dharma: "宗箸" },
+        { name: "王素慧", dharma: "佛簇" },
+        { name: "王素秋", dharma: "佛簦" },
+        { name: "王素娟", dharma: "佛箕" },
+        { name: "莊惠淳", dharma: "佛箬" },
+        { name: "Jungle", dharma: "佛笵" },
+        { name: "何紫涵", dharma: "佛筎" },
+        { name: "朱仙鳳", dharma: "佛箔" },
+        { name: "黃利慧", dharma: "佛籮" },
+        { name: "劉瑋婷", dharma: "佛簏" },
+        { name: "魏碧瑤", dharma: "佛箙" },
+        { name: "連順來", dharma: "宗築" },
+        { name: "林明圓", dharma: "佛笳" },
+        { name: "黃麗香", dharma: "佛笛" },
+        { name: "吳祐瑋", dharma: "宗策" },
+        { name: "陳郁齊", dharma: "佛簿" },
+        { name: "吳宸頡", dharma: "宗篌" },
+        { name: "吳承諺", dharma: "宗算" },
+        { name: "陳月娥", dharma: "佛笙" },
+        { name: "林胡綿", dharma: "佛簷" },
+        { name: "曾榮姬", dharma: "佛笭" },
+      ];
+
+      document.addEventListener("DOMContentLoaded", () => {
+        // 建立筆畫排序器 (繁體中文筆畫順序)
+        const sorter = new Intl.Collator("zh-Hant-u-co-stroke");
+
+        // 依照姓名筆畫排序
+        const sortedData = [...rawData].sort((a, b) =>
+          sorter.compare(a.name, b.name),
+        );
+
+        renderCards(sortedData);
+
+        const searchInput = document.getElementById("searchInput");
+        searchInput.addEventListener("input", (e) => {
+          const term = e.target.value.toLowerCase().trim();
+          if (!term) {
+            renderCards(sortedData);
+            return;
+          }
+          const filtered = sortedData.filter((item) => {
+            return (
+              item.name.toLowerCase().includes(term) ||
+              item.dharma.includes(term)
+            );
+          });
+          renderCards(filtered);
+        });
+      });
+
+      function renderCards(data) {
+        const container = document.getElementById("cardContainer");
+        const noResult = document.getElementById("noResult");
+        // 移除 countSpan 相關代碼
+
+        // 清空容器，但保留 noResult 元素
+        Array.from(container.children).forEach((child) => {
+          if (child.id !== "noResult") container.removeChild(child);
+        });
+
+        if (data.length === 0) {
+          noResult.style.display = "block";
+          return;
+        } else {
+          noResult.style.display = "none";
+        }
+
+        data.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "card";
+
+          const dText = item.dharma;
+          const lastChar = dText.slice(-1);
+          const prefix = dText.slice(0, -1);
+
+          card.innerHTML = `
+                <div class="dharma-name-box">
+                    <span class="d-first">${prefix}</span><span class="d-last">${lastChar}</span>
+                </div>
+                <div class="real-name">${item.name}</div>
+            `;
+          container.appendChild(card);
+        });
+      }
+    </script>
+  </body>
+</html>
